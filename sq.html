@@ -138,6 +138,7 @@
         let gameOver = false;
         const gameOverContainer = document.querySelector('.game-over-container');
         const finalScoreSpan = document.querySelector('#final-score');
+        let ananasSpeed = 1; // Aggiungi questa variabile per controllare la velocità di discesa dell'ananas
 
         async function init() {
             const modelURL = URL + "model.json";
@@ -219,7 +220,7 @@
 
         function moveAnanases() {
             for (let i = 0; i < ananasPositions.length; i++) {
-                ananasPositions[i].y += 5;
+                ananasPositions[i].y += ananasSpeed; // Usa la variabile ananasSpeed qui
                 ananasElements[i].style.left = ananasPositions[i].x + 'px';
                 ananasElements[i].style.top = ananasPositions[i].y + 'px';
 
