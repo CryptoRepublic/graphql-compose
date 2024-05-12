@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Muvt</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        #game-container {
+            position: relative;
+            width: 80%;
+            max-width: 600px;
+            height: 40vh;
+            border: 1px solid black;
+            margin-bottom: 20px;
+            overflow: hidden;
+            background-image: url('https://raw.githubusercontent.com/CryptoRepublic/graphql-compose/master/06%20-%20sfondo.jpeg');
+            background-size: cover;
+        }
+        #character {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            bottom: 5%;
+            left: 45%;
+            background-image: url('https://raw.githubusercontent.com/CryptoRepublic/graphql-compose/master/01_-_scoiattolo-removebg-preview.png');
+            background-size: cover;
+        }
+        #ananas {
+            position: absolute;
+            width: 50px;
+            height: 55px;
+            background-image: url('https://raw.githubusercontent.com/CryptoRepublic/graphql-compose/f9e60a18d38adf66dfc6799b7599fac472733ab3/nuts%20(15).svg');
+            background-size: cover;
+        }
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            max-width: 300px;
+        }
+        .button-container button {
+            width: 100%;
+            padding: 10px 0;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .start-button {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .start-button:hover {
+            background-color: #3e8e41;
+        }
+        .restart-button {
+            background-color: #f44336;
+            color: white;
+        }
+        .restart-button:hover {
+            background-color: #e53935;
+        }
+        .stop-button {
+            background-color: #3f51b5;
+            color: white;
+        }
+        .stop-button:hover {
+            background-color: #303f9f;
+        }
+        .score-container {
+            font-size: 20px;
+            font-weight: bold;
+            width: 100%;
+            max-width: 300px;
+            text-align: center;
+        }
+        .game-over-container {
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+            width: 100%;
+            max-width: 300px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div>Muvt</div>
+
+    <div id="game-container">
+        <div id="character"></div>
+        <div id="ananas"></div>
+    </div>
+
+    <div class="button-container">
+        <button type="button" class="start-button" onclick="init()">Start</button>
+        <button type="button" class="restart-button" onclick="restart()">Restart</button>
+        <button type="button" class="stop-button" onclick="stopGame()">Stop</button>
+    </div>
+    <div class="score-container">
+        Score: <span id="score">0</span>
+    </div>
+
+    <div class="game-over-container">
+        Game Over! <br>
+        Score: <span id="final-score">0</span>
+    </div>
+<canvas id="canvas"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+    <script>
+        
+        let model, webcam, ctx, labelContainer, maxPredictions;
+        let character = document.getElementById('character');
+        let ananas = document.getElementById('ananas');
+        let characterPosition = { x: 275, y: 350 };
+        let ananasPosition = { x: Math.floor(Math.random() * 550), y: 0 };
+        let score = 0;
+        let scoreElement = document.getElementById('score');
+        let ananasElements = [ananas];
+        let ananasPositions = [ananasPosition];
+        let isGameRunning = false;
+        let loopAnimationId;
+        let moveAnanasesIntervalId;
+        let gameOver = false;
+        const gameOverContainer = document.querySelector('.game-over-container');
+        const finalScoreSpan = document.querySelector('#final-score');
+        let ananasSpeed = 1; // Aggiungi questa variabile per controllare la velocità di discesa dell'ananas
+
+        async function init() {
+            const modelURL = "https://cryptorepublic.github.io/graphql-compose/model.json";
+            const metadataURL = "https://cryptorepublic.github.io/graphql-compose/metadata.json";
+
+            model = await tmPose.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const size = 200;
+            const flip = true;
+            webcam = new tmPose.Webcam(size, size, flip);
+            await webcam.setup();
+            await webcam.play();
+            loopAnimationId = requestAnimationFrame(loop);
+
+            labelContainer = document.createElement("div");
+            document.body.appendChild(labelContainer);
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
+
+            moveAnanasesIntervalId = setInterval(moveAnanases, 50);
+            isGameRunning = true;
+        }
+
+        function restart() {
+            score = 0;
+            scoreElement.innerHTML = score;
+            ananasElements = [ananas];
+            ananasPositions = [{ x: Math.floor(Math.random() * 550), y: 0 }];
+            gameOver = false;
+            gameOverContainer.style.display = 'none';
+            init();
+        }
+
+        function stopGame() {
+            cancelAnimationFrame(loopAnimationId);
+            clearInterval(moveAnanasesIntervalId);
+            isGameRunning = false;
+        }
+
+        async function loop(timestamp) {
+            if (!isGameRunning) {
+                return;
+            }
+            webcam.update();
+            await predict();
+            loopAnimationId = requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+            const prediction = await model.predict(posenetOutput);
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction =
+                    prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+            }
+
+            moveCharacter(prediction);
+            checkCollision();
+        }
+
+        function moveCharacter(prediction) {
+            let right = prediction.find(p => p.className === 'right');
+            let left = prediction.find(p => p.className === 'left');
+            let middle = prediction.find(p => p.className === 'middle');
+
+            if (right.probability > 0.8 && characterPosition.x < 550) {
+                characterPosition.x += 25;
+            } else if (left.probability > 0.8 && characterPosition.x > 0) {
+                characterPosition.x -= 25;
+            } else if (middle.probability > 0.8) {
+                // Il personaggio blu rimane fermo
+            }
+            character.style.left = characterPosition.x + 'px';
+        }
+
+        function moveAnanases() {
+            for (let i = 0; i < ananasPositions.length; i++) {
+                ananasPositions[i].y += ananasSpeed; // Usa la variabile ananasSpeed qui
+                ananasElements[i].style.left = ananasPositions[i].x + 'px';
+                ananasElements[i].style.top = ananasPositions[i].y + 'px';
+
+                if (ananasPositions[i].y > 400) {
+                    if (!gameOver) {
+                        gameOver = true;
+                        stopGame();
+                        gameOverContainer.style.display = 'block';
+                        finalScoreSpan.textContent = score;
+                    }
+                    ananasPositions[i].y = 0;
+                    ananasPositions[i].x = Math.floor(Math.random() * 550);
+                }
+            }
+        }
+
+        function checkCollision() {
+            const characterRect = character.getBoundingClientRect();
+
+            for (let i = 0; i < ananasElements.length; i++) {
+                const ananasRect = ananasElements[i].getBoundingClientRect();
+
+                if (
+                    characterRect.x < ananasRect.x + ananasRect.width &&
+                    characterRect.x + characterRect.width > ananasRect.x &&
+                    characterRect.y < ananasRect.y + ananasRect.height &&
+                    characterRect.y + characterRect.height > ananasRect.y
+                ) {
+                    if (!gameOver) {
+                        score++;
+                        scoreElement.innerHTML = score;
+                        if (score % 20 === 0) {
+                            createAnotherAnanas();
+                            ananasSpeed += 0.5; // Incrementa la velocità di discesa dell'ananas
+                        }
+                        ananasPositions[i].y = 0;
+                        ananasPositions[i].x = Math.floor(Math.random() * 550);
+                    }
+                }
+            }
+        }
+
+        function createAnotherAnanas() {
+            const newAnanas = document.createElement('div');
+            newAnanas.style.position = 'absolute';
+            newAnanas.style.width = '60px';
+            newAnanas.style.height = '60px';
+            newAnanas.style.backgroundImage = "url('https://raw.githubusercontent.com/CryptoRepublic/graphql-compose/f9e60a18d38adf66dfc6799b7599fac472733ab3/nuts%20(15).svg')";
+            newAnanas.style.backgroundSize = 'cover';
+            newAnanas.style.left = Math.floor(Math.random() * 550) + 'px';
+            newAnanas.style.top = '0px';
+            document.getElementById('game-container').appendChild(newAnanas);
+            ananasElements.push(newAnanas);
+            ananasPositions.push({ x: parseInt(newAnanas.style.left), y: 0 });
+        }
+    </script>
+</body>
+</html>
