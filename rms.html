@@ -119,10 +119,9 @@
         Score: <span id="final-score">0</span>
     </div>
 <canvas id="canvas"></canvas>
-    
-    
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8.3/dist/teachablemachine-pose.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
     <script>
         
         let model, webcam, ctx, labelContainer, maxPredictions;
@@ -138,10 +137,6 @@
         let loopAnimationId;
         let moveAnanasesIntervalId;
         let gameOver = false;
-        
-        const reshapedInputData = tf.reshape(inputData, [1, 14739]);
-        const prediction = model.predict(reshapedInputData);
-        
         const gameOverContainer = document.querySelector('.game-over-container');
         const finalScoreSpan = document.querySelector('#final-score');
         let ananasSpeed = 1; // Aggiungi questa variabile per controllare la velocità di discesa dell'ananas
@@ -197,7 +192,7 @@
 
         async function predict() {
             const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
-            const prediction = await model.predict(tf.browser.fromPixels(webcam.canvas));
+            const prediction = await model.predict(posenetOutput);
 
             for (let i = 0; i < maxPredictions; i++) {
                 const classPrediction =
