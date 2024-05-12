@@ -121,7 +121,7 @@
 <canvas id="canvas"></canvas>
     
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.0/dist/tf.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8.3/dist/teachablemachine-pose.min.js"></script>
     <script>
         
@@ -193,7 +193,7 @@
 
         async function predict() {
             const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
-            const prediction = await model.predict(posenetOutput);
+            const prediction = await model.predict(tf.browser.fromPixels(webcam.canvas));
 
             for (let i = 0; i < maxPredictions; i++) {
                 const classPrediction =
