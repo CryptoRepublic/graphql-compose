@@ -138,6 +138,10 @@
         let loopAnimationId;
         let moveAnanasesIntervalId;
         let gameOver = false;
+        
+        const reshapedInputData = tf.reshape(inputData, [1, 14739]);
+        const prediction = model.predict(reshapedInputData);
+        
         const gameOverContainer = document.querySelector('.game-over-container');
         const finalScoreSpan = document.querySelector('#final-score');
         let ananasSpeed = 1; // Aggiungi questa variabile per controllare la velocità di discesa dell'ananas
