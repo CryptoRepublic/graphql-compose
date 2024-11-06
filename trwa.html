@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waste Classifier with Webcam</title>
     <style>
         body {
@@ -11,12 +13,6 @@
         .container {
             max-width: 800px;
             margin: 0 auto;
-        }
-        .result-container {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
         }
         #webcam-container {
             margin: 20px 0;
@@ -67,78 +63,49 @@
         const URL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/";
         let model, webcam, labelContainer, maxPredictions;
 
-        // Dizionario delle informazioni sui materiali
+        // Informazioni sui materiali
         const wasteInfo = {
-            "Wine Bottle": {
-                type: "GLASS",
-                info: "Glass bottles are 100% recyclable and can be recycled endlessly without loss in quality or purity.",
-                sdgGoals: ["Responsible Consumption", "Life Below Water"]
-            },
-            "Water Bottle": {
-                type: "PLASTIC",
-                info: "Plastic water bottles take up to 450 years to decompose. Please consider using reusable bottles.",
-                sdgGoals: ["Clean Water and Sanitation", "Responsible Consumption", "Life Below Water"]
-            },
-            "Soda Bottle": {
-                type: "PLASTIC",
-                info: "Most soda bottles are made from PET plastic and are highly recyclable.",
-                sdgGoals: ["Responsible Consumption", "Life Below Water"]
-            },
-            "Plastic Bottle": {
-                type: "PLASTIC",
-                info: "Plastic bottles contribute significantly to ocean pollution. Please recycle properly.",
-                sdgGoals: ["Life Below Water", "Responsible Consumption"]
-            },
-            "Beer Bottle": {
-                type: "GLASS",
-                info: "Glass beer bottles can be recycled indefinitely without quality degradation.",
-                sdgGoals: ["Responsible Consumption", "Climate Action"]
-            },
-            "Cardboard": {
-                type: "CARDBOARD",
-                info: "Cardboard is biodegradable and highly recyclable. It can be recycled 5-7 times.",
-                sdgGoals: ["Responsible Consumption", "Climate Action"]
-            },
-            "Glass": {
-                type: "GLASS",
-                info: "Glass can be recycled indefinitely without loss in purity or quality.",
-                sdgGoals: ["Responsible Consumption", "Climate Action"]
-            },
-            "Metal": {
-                type: "METAL",
-                info: "Metal can be recycled indefinitely without degrading its properties.",
-sdgGoals: ["Responsible Consumption", "Industry Innovation"]
-            },
-            "Paper": {
-                type: "PAPER",
-                info: "Paper can be recycled 5-7 times before fibers become too short.",
-                sdgGoals: ["Responsible Consumption", "Life on Land"]
-            },
-            "Plastic": {
-                type: "PLASTIC",
-                info: "Plastic can take hundreds of years to decompose. Please reduce, reuse, and recycle.",
-                sdgGoals: ["Life Below Water", "Responsible Consumption"]
-            }
+            "Wine Bottle": { type: "GLASS", info: "Glass bottles are recyclable.", sdgGoals: ["Responsible Consumption"] },
+            "Water Bottle": { type: "PLASTIC", info: "Plastic bottles are less eco-friendly.", sdgGoals: ["Clean Water"] },
+            "Soda Bottle": { type: "PLASTIC", info: "Soda bottles can be recycled.", sdgGoals: ["Responsible Consumption"] },
+            "Plastic Bottle": { type: "PLASTIC", info: "Plastic bottles take a long time to decompose.", sdgGoals: ["Life Below Water"] },
+            "Beer Bottle": { type: "GLASS", info: "Beer bottles can be recycled endlessly.", sdgGoals: ["Responsible Consumption"] },
+            "Cardboard": { type: "CARDBOARD", info: "Cardboard is recyclable.", sdgGoals: ["Responsible Consumption"] },
+            "Glass": { type: "GLASS", info: "Glass is recyclable.", sdgGoals: ["Responsible Consumption"] },
+            "Metal": { type: "METAL", info: "Metal can be recycled indefinitely.", sdgGoals: ["Industry Innovation"] },
+            "Paper": { type: "PAPER", info: "Paper is recyclable.", sdgGoals: ["Responsible Consumption"] },
+            "Plastic": { type: "PLASTIC", info: "Plastic should be recycled properly.", sdgGoals: ["Life Below Water"] }
         };
 
         async function init() {
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
 
-            // Carica il modello e i metadata
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
-            // Setup della webcam
-            const flip = false;
-            webcam = new tmImage.Webcam(400, 400, flip);
-            await webcam.setup(
-                {facingMode: 'enviroment'
+            // Seleziona la fotocamera posteriore
+            navigator.mediaDevices.enumerateDevices().then(devices => {
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                const backCamera = videoDevices.find(device => device.label.toLowerCase().includes('back'));
+                
+                const constraints = {
+                    video: {
+                        deviceId: backCamera ? { exact: backCamera.deviceId } : undefined,
+                        facingMode: 'environment'
+                    }
+                };
+                initializeWebcam(constraints);
             });
+        }
+
+        async function initializeWebcam(constraints) {
+            webcam = new tmImage.Webcam(400, 400, false);  // false per non capovolgere
+            await webcam.setup(constraints);
             await webcam.play();
             window.requestAnimationFrame(loop);
 
-            // Aggiungi elementi al DOM
             document.getElementById("webcam-container").appendChild(webcam.canvas);
             labelContainer = document.getElementById("label-container");
             for (let i = 0; i < maxPredictions; i++) {
@@ -169,7 +136,6 @@ sdgGoals: ["Responsible Consumption", "Industry Innovation"]
                 }
             }
 
-            // Aggiorna le informazioni sul rifiuto
             updateWasteInfo(mostLikelyClass, highestProbability);
         }
 
@@ -182,8 +148,10 @@ sdgGoals: ["Responsible Consumption", "Industry Innovation"]
                     <h3>${className} (${info.type})</h3>
                     <p><strong>Confidence:</strong> ${(probability * 100).toFixed(1)}%</p>
                     <p><strong>Information:</strong> ${info.info}</p>
-                    <p><strong>Related SDG Goals:</strong> ${info.sdgGoals.join(", ")}</p>
+                    <p><strong>Related SDG Goals:</strong> ${info.sdgGoals ? info.sdgGoals.join(", ") : 'N/A'}</p>
                 `;
+            } else {
+                wasteInfoElement.innerHTML = <p>No significant result obtained.</p>;
             }
         }
     </script>
