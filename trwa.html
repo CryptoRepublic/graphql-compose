@@ -2,47 +2,94 @@
 <html>
 <head>
     <title>Waste Classifier with Webcam</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
+            padding: 20px;
             text-align: center;
+            background-color: #f0f0f0;
         }
         .container {
-            max-width: 800px;
+            max-width: 100%;
             margin: 0 auto;
+            padding: 10px;
         }
         .result-container {
             margin-top: 20px;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
+            background-color: white;
         }
         #webcam-container {
-            margin: 20px 0;
+            margin: 20px auto;
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            position: relative;
+            overflow: hidden;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        #webcam-container canvas {
+            width: 100% !important;
+            height: auto !important;
+            display: block;
         }
         #label-container {
-            font-size: 18px;
-            margin: 20px 0;
+            font-size: 16px;
+            margin: 20px auto;
+            padding: 15px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 400px;
+        }
+        #label-container div {
+            margin: 10px 0;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: #333;
         }
         .info-container {
-            margin-top: 20px;
+            margin: 20px auto;
             text-align: left;
             padding: 15px;
-            background-color: #f5f5f5;
-            border-radius: 5px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 400px;
         }
         button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             font-size: 16px;
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 25px;
             cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
         }
         button:hover {
             background-color: #45a049;
+            transform: translateY(-2px);
+        }
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .prediction-text {
+            font-weight: bold;
+            color: #4CAF50;
         }
     </style>
 </head>
@@ -64,9 +111,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <script type="text/javascript">
         const URL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/";
-        let model, webcam, labelContainer, maxPredictions;
-
-        const wasteInfo = {
+        let model, webcam, labelContainer, maxPredictions;const wasteInfo = {
             "Wine Bottle": {
                 type: "GLASS",
                 info: "Glass bottles are 100% recyclable and can be recycled endlessly without loss in quality or purity.",
@@ -107,7 +152,8 @@
                 info: "Metal can be recycled indefinitely without degrading its properties.",
                 sdgGoals: ["Responsible Consumption", "Industry Innovation"]
             },
-            "Paper": {type: "PAPER",
+            "Paper": {
+                type: "PAPER",
                 info: "Paper can be recycled 5-7 times before fibers become too short.",
                 sdgGoals: ["Responsible Consumption", "Life on Land"]
             },
@@ -122,12 +168,10 @@
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
 
-            // Carica il modello e i metadata
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
-            // Setup della webcam con gestione fotocamera posteriore
-            const flip = true;
+            const flip = false; // Cambiato a false per la camera posteriore
             try {
                 webcam = new tmImage.Webcam(400, 400, flip, {
                     facingMode: { exact: "environment" }
@@ -141,9 +185,11 @@
             await webcam.play();
             window.requestAnimationFrame(loop);
 
-            // Aggiungi elementi al DOM
+            document.getElementById("webcam-container").innerHTML = '';
             document.getElementById("webcam-container").appendChild(webcam.canvas);
+            
             labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = ''; // Pulisce il container prima di aggiungere nuovi elementi
             for (let i = 0; i < maxPredictions; i++) {
                 labelContainer.appendChild(document.createElement("div"));
             }
@@ -153,21 +199,21 @@
             webcam.update();
             await predict();
             window.requestAnimationFrame(loop);
-        }
-
-        async function predict() {
+        }async function predict() {
             const prediction = await model.predict(webcam.canvas);
             let highestProbability = 0;
             let mostLikelyClass = "";
 
             for (let i = 0; i < maxPredictions; i++) {
-                const probability = prediction[i].probability.toFixed(2);
+                const probability = prediction[i].probability;
                 const className = prediction[i].className;
-                const classPrediction = className + ": " + probability;
-                labelContainer.childNodes[i].innerHTML = classPrediction;
+                const percentage = (probability * 100).toFixed(1);
+                const classPrediction = ${className}: ${percentage}%;
+                
+                labelContainer.childNodes[i].innerHTML = <span class="prediction-text">${classPrediction}</span>;
 
-                if (prediction[i].probability > highestProbability) {
-                    highestProbability = prediction[i].probability;
+                if (probability > highestProbability) {
+                    highestProbability = probability;
                     mostLikelyClass = className;
                 }
             }
