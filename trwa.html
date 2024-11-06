@@ -2,126 +2,73 @@
 <html>
 <head>
     <title>Waste Classifier with Webcam</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #f0f0f0;
-            min-height: 100vh;
-        }
-
-        .main-container {
-            width: 100%;
-            max-width: 500px;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        h1 {
+            margin: 20px;
             text-align: center;
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 20px;
         }
-
-        .camera-container {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            margin-bottom: 20px;
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
         }
-
+        .result-container {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
         #webcam-container {
-            width: 100%;
-            aspect-ratio: 1;
-            background-color: #000;
-            border-radius: 10px;
-            overflow: hidden;
-            position: relative;
+            margin: 20px 0;
         }
-
-        #webcam-container canvas {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: cover;
+        #label-container {
+            font-size: 18px;
+            margin: 20px 0;
         }
-
+        .info-container {
+            margin-top: 20px;
+            text-align: left;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+        }
         button {
+            padding: 10px 20px;
+            font-size: 16px;
             background-color: #4CAF50;
             color: white;
-            padding: 12px 30px;
             border: none;
-            border-radius: 25px;
-            font-size: 16px;
+            border-radius: 5px;
             cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
         }
-
         button:hover {
             background-color: #45a049;
-            transform: translateY(-2px);
-        }
-
-        #label-container {
-            width: 100%;
-            background-color: white;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        #label-container div {
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-            font-size: 16px;
-            color: #333;
-        }
-
-        #waste-info {
-            width: 100%;
-            background-color: white;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .prediction-text {
-            font-weight: bold;
-            color: #4CAF50;
         }
     </style>
 </head>
 <body>
-    <div class="main-container">
-        <h1>Waste Classifier</h1>
+    <div class="container">
+        <h1>Waste Classifier Sustainability App</h1>
         
-        <div class="camera-container">
-            <div id="webcam-container"></div>
-            <button onclick="init()">Start Camera</button>
-        </div>
-
+        <button type="button" onclick="init()">Start Camera</button>
+        
+        <div id="webcam-container"></div>
         <div id="label-container"></div>
-        <div id="waste-info"></div>
+        
+        <div class="info-container" id="waste-info">
+            <!-- Informazioni sul rifiuto verranno inserite qui -->
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-    <script>
+
+    <script type="text/javascript">
         const URL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/";
-        let model, webcam, labelContainer, maxPredictions;const wasteInfo = {
+        let model, webcam, labelContainer, maxPredictions;
+
+        // Dizionario delle informazioni sui materiali
+        const wasteInfo = {
             "Wine Bottle": {
                 type: "GLASS",
                 info: "Glass bottles are 100% recyclable and can be recycled endlessly without loss in quality or purity.",
@@ -160,7 +107,7 @@
             "Metal": {
                 type: "METAL",
                 info: "Metal can be recycled indefinitely without degrading its properties.",
-                sdgGoals: ["Responsible Consumption", "Industry Innovation"]
+sdgGoals: ["Responsible Consumption", "Industry Innovation"]
             },
             "Paper": {
                 type: "PAPER",
@@ -178,35 +125,23 @@
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
 
-            // Carica il modello
+            // Carica il modello e i metadata
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
-            // Configurazione webcam
-            const flip = false; // Camera posteriore senza flip
-            const webcamSize = Math.min(window.innerWidth, 400);
+            // Setup della webcam
+            const flip = false;
+            webcam = new tmImage.Webcam(400, 400, flip, {
+                facingMode: {exact: "environment"}});
+            await webcam.setup();
+            await webcam.play();
+            window.requestAnimationFrame(loop);
 
-            webcam = new tmImage.Webcam(webcamSize, webcamSize, flip, {
-                facingMode: { exact: "environment" }
-            });
-
-            try {
-                await webcam.setup();
-                await webcam.play();
-                window.requestAnimationFrame(loop);
-
-                // Aggiungi il canvas della webcam
-                const webcamContainer = document.getElementById("webcam-container");
-                webcamContainer.innerHTML = '';
-                webcamContainer.appendChild(webcam.canvas);// Prepara il container delle etichette
-                labelContainer = document.getElementById("label-container");
-                labelContainer.innerHTML = '';
-                for (let i = 0; i < maxPredictions; i++) {
-                    labelContainer.appendChild(document.createElement("div"));
-                }
-            } catch (e) {
-                console.error("Errore nell'inizializzazione della webcam:", e);
-                alert("Errore nell'accesso alla fotocamera. Assicurati di aver concesso i permessi necessari.");
+            // Aggiungi elementi al DOM
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
             }
         }
 
@@ -217,29 +152,24 @@
         }
 
         async function predict() {
-            try {
-                const prediction = await model.predict(webcam.canvas);
-                let highestProbability = 0;
-                let mostLikelyClass = "";
+            const prediction = await model.predict(webcam.canvas);
+            let highestProbability = 0;
+            let mostLikelyClass = "";
 
-                for (let i = 0; i < maxPredictions; i++) {
-                    const probability = prediction[i].probability;
-                    const className = prediction[i].className;
-                    const percentage = (probability * 100).toFixed(1);
-                    
-                    labelContainer.childNodes[i].innerHTML = 
-                        <span class="prediction-text">${className}: ${percentage}%</span>;
+            for (let i = 0; i < maxPredictions; i++) {
+                const probability = prediction[i].probability.toFixed(2);
+                const className = prediction[i].className;
+                const classPrediction = className + ": " + probability;
+                labelContainer.childNodes[i].innerHTML = classPrediction;
 
-                    if (probability > highestProbability) {
-                        highestProbability = probability;
-                        mostLikelyClass = className;
-                    }
+                if (prediction[i].probability > highestProbability) {
+                    highestProbability = prediction[i].probability;
+                    mostLikelyClass = className;
                 }
-
-                updateWasteInfo(mostLikelyClass, highestProbability);
-            } catch (e) {
-                console.error("Errore nella predizione:", e);
             }
+
+            // Aggiorna le informazioni sul rifiuto
+            updateWasteInfo(mostLikelyClass, highestProbability);
         }
 
         function updateWasteInfo(className, probability) {
