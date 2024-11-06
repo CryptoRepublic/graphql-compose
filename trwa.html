@@ -2,7 +2,6 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waste Classifier</title>
     <style>
         body {
@@ -28,6 +27,10 @@
         button:hover {
             background-color: #45a049;
         }
+        #waste-info {
+            margin-top: 20px;
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
@@ -36,24 +39,33 @@
     <video id="video" autoplay playsinline></video>
     <div id="waste-info"></div>
 
+    <!-- Inclusione delle librerie TensorFlow e Teachable Machine -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
+    
     <script>
+        const modelURL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/model.json";
+        const metadataURL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/metadata.json";
+        let model, maxPredictions;
+
         document.getElementById("start-button").addEventListener("click", async () => {
             const videoElement = document.getElementById("video");
 
+            // Constraints per la fotocamera posteriore
             const constraints = {
                 video: {
-                    facingMode: { exact: "environment" } // Richiede la fotocamera posteriore
+                    facingMode: { exact: "environment" } // Tenta di usare la fotocamera posteriore
                 }
             };
 
             try {
+                // Richiesta di accesso alla fotocamera posteriore
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 videoElement.srcObject = stream;
-                runClassification(stream);
+                await loadModel();
+                runClassification();
             } catch (error) {
-                console.error("Errore nell'accesso alla fotocamera con 'environment'. Provando con 'user'...", error);
+                console.warn("Impossibile accedere alla fotocamera posteriore, tentando con quella frontale...", error);
 
                 // Tentativo di fare il fallback sulla fotocamera frontale
                 const fallbackConstraints = {
@@ -62,7 +74,8 @@
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
                     videoElement.srcObject = stream;
-                    runClassification(stream);
+                    await loadModel();
+                    runClassification();
                 } catch (fallbackError) {
                     console.error("Errore nell'accesso alla fotocamera di fallback:", fallbackError);
                     alert("Non è possibile accedere a nessuna fotocamera. Controlla i permessi e le impostazioni del dispositivo.");
@@ -70,15 +83,17 @@
             }
         });
 
-        async function runClassification(stream) {
-            const modelURL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/model.json";
-            const metadataURL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/metadata.json";
+        async function loadModel() {
+            // Caricamento del modello Teachable Machine
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+        }
 
-            const model = await tmImage.load(modelURL, metadataURL);
-            const maxPredictions = model.getTotalClasses();
-
+        function runClassification() {
+            // Esegue le predizioni ogni secondo
             setInterval(async () => {
-                const predictions = await model.predict(document.getElementById('video'));
+                const video = document.getElementById('video');
+                const predictions = await model.predict(video);
                 let highestProb = 0;
                 let bestClass = '';
 
@@ -89,8 +104,15 @@
                     }
                 });
 
-                document.getElementById("waste-info").innerText = Classe: ${bestClass} - Probabilità: ${(highestProb * 100).toFixed(2)}%;
+                displayResult(bestClass, highestProb);
             }, 1000);
+        }
+        function displayResult(className, probability) {
+            const wasteInfoElement = document.getElementById("waste-info");
+            wasteInfoElement.innerHTML = `
+                <p><strong>Classe:</strong> ${className}</p>
+                <p><strong>Probabilità:</strong> ${(probability * 100).toFixed(2)}%</p>
+            `;
         }
     </script>
 </body>
