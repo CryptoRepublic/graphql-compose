@@ -67,7 +67,7 @@
 
         const wasteInfo = {
             "Wine Bottle": { type: "GLASS", info: "Glass bottles are recyclable.", sdgGoals: ["Responsible Consumption"] },
-            "Water Bottle": { type: "PLASTIC", info: "Plastic bottles are less eco-friendly.", sdgGoals: ["Clean Water"] },
+            "Water Bottle": { type: "PLASTIC", info: "Plastic bottles should be recycled.", sdgGoals: ["Clean Water"] },
             "Soda Bottle": { type: "PLASTIC", info: "Soda bottles can be recycled.", sdgGoals: ["Responsible Consumption"] },
             "Plastic Bottle": { type: "PLASTIC", info: "Plastic bottles take a long time to decompose.", sdgGoals: ["Life Below Water"] },
             "Beer Bottle": { type: "GLASS", info: "Beer bottles can be recycled endlessly.", sdgGoals: ["Responsible Consumption"] },
@@ -85,9 +85,10 @@
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
+            // Constraints video per la fotocamera posteriore
             const constraints = {
                 video: {
-                    facingMode: { exact: "environment" } // Attempt to use the back camera
+                    facingMode: { exact: "environment" } // Tenta di utilizzare la fotocamera posteriore
                 },
                 audio: false
             };
@@ -99,21 +100,25 @@
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
                     video.play();
+                    startWebcam(video); // Fai partire il webcam utilizzando il video
                 };
-
-                webcam = new tmImage.Webcam(400, 400, false, video); // Inizializza con video
-                await webcam.setup({ facingMode: "environment" }); // Settato per usare la camera posteriore
-                await webcam.play();
-                window.requestAnimationFrame(loop);
-
-                document.getElementById("webcam-container").appendChild(webcam.canvas);
-                labelContainer = document.getElementById("label-container");
-                for (let i = 0; i < maxPredictions; i++) {
-                    labelContainer.appendChild(document.createElement("div"));
-                }
             } catch (error) {
-                console.error("Error accessing the camera.", error);
-                alert("Could not open the camera. Make sure to allow camera access and refresh the page.");
+                console.error(error);
+                alert("Si è verificato un errore nell'accesso alla fotocamera. Controlla i permessi.");
+            }
+        }
+
+        function startWebcam(video) {
+            webcam = new tmImage.Webcam(400, 400, false); // Inizializza 400x400 e non ruotare
+            webcam.setup().then(() => {
+                webcam.canvas.getContext('2d').drawImage(video, 0, 0, webcam.canvas.width, webcam.canvas.height);
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                window.requestAnimationFrame(loop);
+            });
+
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
             }
         }
 
