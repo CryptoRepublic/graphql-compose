@@ -131,7 +131,7 @@ sdgGoals: ["Responsible Consumption", "Industry Innovation"]
 
             // Setup della webcam
             const flip = false;
-            webcam = new tmImage.Webcam(400, 400, flip);
+            webcam = new tmImage.Webcam(400, 400, false);
             await webcam.setup();
             await webcam.play();
             window.requestAnimationFrame(loop);
