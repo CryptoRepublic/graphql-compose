@@ -131,7 +131,8 @@ sdgGoals: ["Responsible Consumption", "Industry Innovation"]
 
             // Setup della webcam
             const flip = false;
-            webcam = new tmImage.Webcam(400, 400, flip, {
+            const webcamSize = Math.min(window.innerWidth, 400);
+            webcam = new tmImage.Webcam(webcamSize, webcamSize, flip, {
                 facingMode: {exact: "environment"}});
             await webcam.setup();
             await webcam.play();
