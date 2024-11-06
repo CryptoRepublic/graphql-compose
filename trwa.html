@@ -10,25 +10,10 @@
             margin: 20px;
             text-align: center;
         }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        #webcam-container {
-            margin: 20px 0;
-            border: 1px solid #ccc;
-            display: inline-block;
-        }
-        #label-container {
-            font-size: 18px;
-            margin: 20px 0;
-        }
-        .info-container {
-            margin-top: 20px;
-            text-align: left;
-            padding: 15px;
-            background-color: #f5f5f5;
-            border-radius: 5px;
+        #video {
+            width: 100%; /* Imposta la larghezza del video al 100% */
+            max-width: 400px; /* Larghezza massima per la visualizzazione */
+            border: 1px solid #ccc; /* Stile del bordo */
         }
         button {
             padding: 10px 20px;
@@ -45,17 +30,11 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div>
         <h1>Waste Classifier Sustainability App</h1>
-        
         <button id="start-button">Start Camera</button>
-        
-        <div id="webcam-container"></div>
-        <div id="label-container"></div>
-        
-        <div class="info-container" id="waste-info">
-            <!-- Informazioni sul rifiuto verranno inserite qui -->
-        </div>
+        <video id="video" autoplay></video>
+        <div id="waste-info"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
@@ -63,112 +42,50 @@
 
     <script type="text/javascript">
         const URL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/";
-        let model, webcam, labelContainer, maxPredictions;
-
-        const wasteInfo = {
-            "Wine Bottle": { type: "GLASS", info: "Glass bottles are recyclable.", sdgGoals: ["Responsible Consumption"] },
-            "Water Bottle": { type: "PLASTIC", info: "Plastic bottles should be recycled.", sdgGoals: ["Clean Water"] },
-            "Soda Bottle": { type: "PLASTIC", info: "Soda bottles can be recycled.", sdgGoals: ["Responsible Consumption"] },
-            "Plastic Bottle": { type: "PLASTIC", info: "Plastic bottles take a long time to decompose.", sdgGoals: ["Life Below Water"] },
-            "Beer Bottle": { type: "GLASS", info: "Beer bottles can be recycled endlessly.", sdgGoals: ["Responsible Consumption"] },
-            "Cardboard": { type: "CARDBOARD", info: "Cardboard is recyclable.", sdgGoals: ["Responsible Consumption"] },
-            "Glass": { type: "GLASS", info: "Glass is recyclable.", sdgGoals: ["Responsible Consumption"] },
-            "Metal": { type: "METAL", info: "Metal can be recycled indefinitely.", sdgGoals: ["Industry Innovation"] },
-            "Paper": { type: "PAPER", info: "Paper is recyclable.", sdgGoals: ["Responsible Consumption"] },
-            "Plastic": { type: "PLASTIC", info: "Plastic should be recycled properly.", sdgGoals: ["Life Below Water"] }
-        };
-
-        document.getElementById("start-button").addEventListener("click", init);
-
-        async function init() {
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
-
+        let model, maxPredictions;
+        
+        document.getElementById("start-button").addEventListener("click", async () => {
             // Carica il modello
-            model = await tmImage.load(modelURL, metadataURL);
+            model = await tmImage.load(URL + "model.json", URL + "metadata.json");
             maxPredictions = model.getTotalClasses();
 
-            // Constraints video per la fotocamera posteriore
+            // Imposta i constraints per la fotocamera posteriore
             const constraints = {
                 video: {
-                    facingMode: { exact: "environment" } // Tenta di utilizzare la fotocamera posteriore
-                },
-                audio: false
+                    facingMode: 'environment' // Usa la fotocamera posteriore
+                }
             };
-try {
-                // Richiesta accesso alla fotocamera
+
+            try {
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                const video = document.createElement("video");
-                video.style.display = "none";
-                video.srcObject = stream;
-                document.body.appendChild(video);
-                video.onloadedmetadata = () => {
-                    video.play();
-                    startWebcam(video); // Avvia il webcam utilizzando il video
-                };
+                document.getElementById("video").srcObject = stream;
+                // Iniziare il riconoscimento dopo che il video è stato avviato
+                setInterval(predict, 1000); // Predici ogni secondo
             } catch (error) {
                 console.error("Errore nell'accesso alla fotocamera:", error);
-                alert("Impossibile accedere alla fotocamera. Assicurati di avere i permessi.");
+                alert("Impossibile accedere alla fotocamera. Controlla i permessi.");
             }
-        }
-
-        function startWebcam(video) {
-            webcam = new tmImage.Webcam(400, 400, false); // Inizializza 400x400 e non ruotare
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
-            
-            // Avvia la webcam
-            webcam.setup()
-                .then(() => {
-                    // Draw the video to the canvas
-                    window.requestAnimationFrame(loop);
-                });
-
-            labelContainer = document.getElementById("label-container");
-            for (let i = 0; i < maxPredictions; i++) {
-                labelContainer.appendChild(document.createElement("div"));
-            }
-        }
-
-        async function loop() {
-            webcam.update();
-            await predict();
-            window.requestAnimationFrame(loop);
-        }
+        });
 
         async function predict() {
-            const prediction = await model.predict(webcam.canvas);
+            const video = document.getElementById("video");
+            const prediction = await model.predict(video);
             let highestProbability = 0;
             let mostLikelyClass = "";
 
+            // Trova la classe con la probabilità più alta
             for (let i = 0; i < maxPredictions; i++) {
-                const probability = prediction[i].probability.toFixed(2);
+                const prob = prediction[i].probability.toFixed(2);
                 const className = prediction[i].className;
-                const classPrediction = className + ": " + probability;
-                labelContainer.childNodes[i].innerHTML = classPrediction;
-
-                if (prediction[i].probability > highestProbability) {
-                    highestProbability = prediction[i].probability;
+                if (prob > highestProbability) {
+                    highestProbability = prob;
                     mostLikelyClass = className;
                 }
             }
 
-            updateWasteInfo(mostLikelyClass, highestProbability);
-        }
-
-        function updateWasteInfo(className, probability) {
+            // Mostra i risultati
             const wasteInfoElement = document.getElementById("waste-info");
-            const info = wasteInfo[className];
-
-            if (info && probability > 0.5) {
-                wasteInfoElement.innerHTML = `
-                    <h3>${className} (${info.type})</h3>
-                    <p><strong>Confidence:</strong> ${(probability * 100).toFixed(1)}%</p>
-                    <p><strong>Information:</strong> ${info.info}</p>
-                    <p><strong>Related SDG Goals:</strong> ${info.sdgGoals ? info.sdgGoals.join(", ") : 'N/A'}</p>
-                `;
-            } else {
-                wasteInfoElement.innerHTML = <p>No significant result obtained.</p>;
-            }
+            wasteInfoElement.innerHTML = Classe: ${mostLikelyClass} (Probabilità: ${highestProbability * 100}%);
         }
     </script>
 </body>
