@@ -130,7 +130,7 @@ sdgGoals: ["Responsible Consumption", "Industry Innovation"]
             maxPredictions = model.getTotalClasses();
 
             // Setup della webcam
-            const flip = true;
+            const flip = false;
             webcam = new tmImage.Webcam(400, 400, flip);
             await webcam.setup();
             await webcam.play();
