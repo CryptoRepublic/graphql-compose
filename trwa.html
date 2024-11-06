@@ -16,6 +16,8 @@
         }
         #webcam-container {
             margin: 20px 0;
+            border: 1px solid #ccc;
+            display: inline-block;
         }
         #label-container {
             font-size: 18px;
@@ -63,7 +65,6 @@
         const URL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/";
         let model, webcam, labelContainer, maxPredictions;
 
-        // Informazioni sui materiali
         const wasteInfo = {
             "Wine Bottle": { type: "GLASS", info: "Glass bottles are recyclable.", sdgGoals: ["Responsible Consumption"] },
             "Water Bottle": { type: "PLASTIC", info: "Plastic bottles are less eco-friendly.", sdgGoals: ["Clean Water"] },
@@ -84,32 +85,35 @@
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
-            // Seleziona la fotocamera posteriore
-            navigator.mediaDevices.enumerateDevices().then(devices => {
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                
-                const backCamera = videoDevices.find(device => device.label.toLowerCase().includes('back'));
-                
-                const constraints = {
-                    video: {
-                        deviceId: backCamera ? { exact: backCamera.deviceId } : undefined,
-                        facingMode: 'environment'
-                    }
+            const constraints = {
+                video: {
+                    facingMode: { exact: "environment" } // Attempt to use the back camera
+                },
+                audio: false
+            };
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = document.createElement("video");
+                video.style.display = "none";
+                document.body.appendChild(video);
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    video.play();
                 };
-                initializeWebcam(constraints);
-            });
-        }
 
-        async function initializeWebcam(constraints) {
-            webcam = new tmImage.Webcam(400, 400, false);  // false per non capovolgere
-            await webcam.setup(constraints);
-            await webcam.play();
-            window.requestAnimationFrame(loop);
+                webcam = new tmImage.Webcam(400, 400, false, video); // Inizializza con video
+                await webcam.setup({ facingMode: "environment" }); // Settato per usare la camera posteriore
+                await webcam.play();
+                window.requestAnimationFrame(loop);
 
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
-            labelContainer = document.getElementById("label-container");
-            for (let i = 0; i < maxPredictions; i++) {
-                labelContainer.appendChild(document.createElement("div"));
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                labelContainer = document.getElementById("label-container");
+                for (let i = 0; i < maxPredictions; i++) {
+                    labelContainer.appendChild(document.createElement("div"));
+                }
+            } catch (error) {
+                console.error("Error accessing the camera.", error);
+                alert("Could not open the camera. Make sure to allow camera access and refresh the page.");
             }
         }
 
