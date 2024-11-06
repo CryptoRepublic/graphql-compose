@@ -130,13 +130,11 @@ sdgGoals: ["Responsible Consumption", "Industry Innovation"]
             maxPredictions = model.getTotalClasses();
 
             // Setup della webcam
-            const flip = true;
-            const constraints = {
-              audio: false,
-              video: { facingMode: "environment" } // Use the rear camera
-            };
-            webcam = new tmImage.Webcam(400, 400, flip);
-            await webcam.setup();
+            const flip = false; // whether to flip the webcam
+
+            webcam = new tmImage.Webcam(400, 400, flip); // width, height, flip, constraints
+            await webcam.setup({facingMode: "environment"});
+;
             await webcam.play();
             window.requestAnimationFrame(loop);
 
