@@ -48,7 +48,7 @@
     <div class="container">
         <h1>Waste Classifier Sustainability App</h1>
         
-        <button type="button" onclick="init()">Start Camera</button>
+        <button id="start-button">Start Camera</button>
         
         <div id="webcam-container"></div>
         <div id="label-container"></div>
@@ -78,10 +78,13 @@
             "Plastic": { type: "PLASTIC", info: "Plastic should be recycled properly.", sdgGoals: ["Life Below Water"] }
         };
 
+        document.getElementById("start-button").addEventListener("click", init);
+
         async function init() {
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
 
+            // Carica il modello
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
@@ -92,29 +95,33 @@
                 },
                 audio: false
             };
-            try {
+try {
+                // Richiesta accesso alla fotocamera
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 const video = document.createElement("video");
                 video.style.display = "none";
-                document.body.appendChild(video);
                 video.srcObject = stream;
+                document.body.appendChild(video);
                 video.onloadedmetadata = () => {
                     video.play();
-                    startWebcam(video); // Fai partire il webcam utilizzando il video
+                    startWebcam(video); // Avvia il webcam utilizzando il video
                 };
             } catch (error) {
-                console.error(error);
-                alert("Si è verificato un errore nell'accesso alla fotocamera. Controlla i permessi.");
+                console.error("Errore nell'accesso alla fotocamera:", error);
+                alert("Impossibile accedere alla fotocamera. Assicurati di avere i permessi.");
             }
         }
 
         function startWebcam(video) {
             webcam = new tmImage.Webcam(400, 400, false); // Inizializza 400x400 e non ruotare
-            webcam.setup().then(() => {
-                webcam.canvas.getContext('2d').drawImage(video, 0, 0, webcam.canvas.width, webcam.canvas.height);
-                document.getElementById("webcam-container").appendChild(webcam.canvas);
-                window.requestAnimationFrame(loop);
-            });
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            
+            // Avvia la webcam
+            webcam.setup()
+                .then(() => {
+                    // Draw the video to the canvas
+                    window.requestAnimationFrame(loop);
+                });
 
             labelContainer = document.getElementById("label-container");
             for (let i = 0; i < maxPredictions; i++) {
