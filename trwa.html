@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waste Classifier with Webcam</title>
+    <title>Waste Classifier</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 10px;
             text-align: center;
         }
         #video {
-            width: 100%; /* Imposta la larghezza del video al 100% */
-            max-width: 400px; /* Larghezza massima per la visualizzazione */
-            border: 1px solid #ccc; /* Stile del bordo */
+            width: 100%;
+            max-width: 400px;
+            margin-top: 10px;
         }
         button {
             padding: 10px 20px;
@@ -23,6 +23,7 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            margin-top: 10px;
         }
         button:hover {
             background-color: #45a049;
@@ -30,62 +31,66 @@
     </style>
 </head>
 <body>
-    <div>
-        <h1>Waste Classifier Sustainability App</h1>
-        <button id="start-button">Start Camera</button>
-        <video id="video" autoplay></video>
-        <div id="waste-info"></div>
-    </div>
+    <h1>Waste Classifier</h1>
+    <button id="start-button">Start Camera</button>
+    <video id="video" autoplay playsinline></video>
+    <div id="waste-info"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-
-    <script type="text/javascript">
-        const URL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/";
-        let model, maxPredictions;
-        
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
+    <script>
         document.getElementById("start-button").addEventListener("click", async () => {
-            // Carica il modello
-            model = await tmImage.load(URL + "model.json", URL + "metadata.json");
-            maxPredictions = model.getTotalClasses();
+            const videoElement = document.getElementById("video");
 
-            // Imposta i constraints per la fotocamera posteriore
             const constraints = {
                 video: {
-                    facingMode: 'environment' // Usa la fotocamera posteriore
+                    facingMode: { exact: "environment" } // Richiede la fotocamera posteriore
                 }
             };
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                document.getElementById("video").srcObject = stream;
-                // Iniziare il riconoscimento dopo che il video è stato avviato
-                setInterval(predict, 1000); // Predici ogni secondo
+                videoElement.srcObject = stream;
+                runClassification(stream);
             } catch (error) {
-                console.error("Errore nell'accesso alla fotocamera:", error);
-                alert("Impossibile accedere alla fotocamera. Controlla i permessi.");
+                console.error("Errore nell'accesso alla fotocamera con 'environment'. Provando con 'user'...", error);
+
+                // Tentativo di fare il fallback sulla fotocamera frontale
+                const fallbackConstraints = {
+                    video: true
+                };
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+                    videoElement.srcObject = stream;
+                    runClassification(stream);
+                } catch (fallbackError) {
+                    console.error("Errore nell'accesso alla fotocamera di fallback:", fallbackError);
+                    alert("Non è possibile accedere a nessuna fotocamera. Controlla i permessi e le impostazioni del dispositivo.");
+                }
             }
         });
 
-        async function predict() {
-            const video = document.getElementById("video");
-            const prediction = await model.predict(video);
-            let highestProbability = 0;
-            let mostLikelyClass = "";
+        async function runClassification(stream) {
+            const modelURL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/model.json";
+            const metadataURL = "https://teachablemachine.withgoogle.com/models/d5QK9Ebsp/metadata.json";
 
-            // Trova la classe con la probabilità più alta
-            for (let i = 0; i < maxPredictions; i++) {
-                const prob = prediction[i].probability.toFixed(2);
-                const className = prediction[i].className;
-                if (prob > highestProbability) {
-                    highestProbability = prob;
-                    mostLikelyClass = className;
-                }
-            }
+            const model = await tmImage.load(modelURL, metadataURL);
+            const maxPredictions = model.getTotalClasses();
 
-            // Mostra i risultati
-            const wasteInfoElement = document.getElementById("waste-info");
-            wasteInfoElement.innerHTML = Classe: ${mostLikelyClass} (Probabilità: ${highestProbability * 100}%);
+            setInterval(async () => {
+                const predictions = await model.predict(document.getElementById('video'));
+                let highestProb = 0;
+                let bestClass = '';
+
+                predictions.forEach(prediction => {
+                    if(prediction.probability > highestProb) {
+                        highestProb = prediction.probability;
+                        bestClass = prediction.className;
+                    }
+                });
+
+                document.getElementById("waste-info").innerText = Classe: ${bestClass} - Probabilità: ${(highestProb * 100).toFixed(2)}%;
+            }, 1000);
         }
     </script>
 </body>
